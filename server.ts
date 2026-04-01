@@ -16,6 +16,28 @@ const mode: Mode =
  */
 app.get("/api/hello-zo", (c) => c.json({ msg: "Hello from Zo" }));
 
+app.post("/api/admin/save-projects", async (c) => {
+  try {
+    const { content } = await c.req.json();
+    await Bun.write("/home/workspace/jadoncalfitzpatrick/src/data/projects.ts", content);
+    return c.json({ ok: true });
+  } catch (e) {
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+});
+
+app.post("/api/admin/save-config", async (c) => {
+  try {
+    const { content } = await c.req.json();
+    await Bun.write("/home/workspace/jadoncalfitzpatrick/public/data/site-config.json", content);
+    await Bun.write("/home/workspace/jadoncalfitzpatrick/src/data/site-config.json", content);
+    await Bun.write("/home/workspace/jadoncalfitzpatrick/dist/data/site-config.json", content);
+    return c.json({ ok: true });
+  } catch (e) {
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+});
+
 if (mode === "production") {
   configureProduction(app);
 } else {
