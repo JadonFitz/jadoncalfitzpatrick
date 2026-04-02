@@ -102,11 +102,14 @@ export default function Admin() {
     });
 
     // Save projects (includes directors)
-    const projectsContent = `export interface Project {
+const projectsContent = `export interface Project {
   id: string; title: string; role: string; year: string; type: string;
   description: string; director: string; color: string; accentColor: string; images: string[];
   cardImage?: string;
   keyCast?: string[];
+  logline?: string;
+  externalLink?: string;
+  buttonLabel?: string;
 }
 export const PROJECTS: Project[] = ${JSON.stringify(projectsToSave, null, 2)};
 export const WHATS_NEXT = ${JSON.stringify(WHATS_NEXT, null, 2)};
@@ -213,6 +216,9 @@ export const WHATS_NEXT = ${JSON.stringify(WHATS_NEXT, null, 2)};
                     <Field label="Role" value={project.role} onChange={(v) => updateProject(i, "role", v)} />
                     <Field label="Director" value={project.director} onChange={(v) => updateProject(i, "director", v)} />
                     <Field label="Type" value={project.type} onChange={(v) => updateProject(i, "type", v)} />
+                    <Field label="Logline" value={project.logline ?? ""} onChange={(v) => updateProject(i, "logline", v)} />
+                    <Field label="Button Label" value={project.buttonLabel ?? ""} onChange={(v) => updateProject(i, "buttonLabel", v)} />
+                    <div className="col-span-2"><Field label="External Link" value={project.externalLink ?? ""} onChange={(v) => updateProject(i, "externalLink", v)} /></div>
                     <div className="col-span-2"><Field label="Description" value={project.description} onChange={(v) => updateProject(i, "description", v)} textarea /></div>
                     <Field label="Card Color" value={project.color} onChange={(v) => updateProject(i, "color", v)} />
                     <Field label="Accent Color" value={project.accentColor} onChange={(v) => updateProject(i, "accentColor", v)} />

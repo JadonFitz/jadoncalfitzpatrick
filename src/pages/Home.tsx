@@ -266,12 +266,15 @@ function ProjectsCloud({
         >
           SELECTED WORK
         </div>
-        <div
-          className="text-xs tracking-widest text-black opacity-20"
+        <a
+          href="https://newterraincreative.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs tracking-widest text-black opacity-20 transition-opacity hover:opacity-80"
           style={{ letterSpacing: "0.3em" }}
         >
-          FLOATING INDEX
-        </div>
+          NEW TERRAIN CREATIVE ↗
+        </a>
       </div>
 
       <div
@@ -309,11 +312,11 @@ function ProjectsCloud({
                   }}
                 >
                   <div
-                    className="group overflow-hidden rounded-[28px] border border-white/20 bg-white/10 backdrop-blur-sm"
+                    className="group overflow-hidden rounded-[28px] border border-white/30 bg-white/12 backdrop-blur-md"
                     style={{
                       boxShadow: isHovered
-                        ? "0 30px 100px rgba(0,0,0,0.28)"
-                        : "0 18px 60px rgba(0,0,0,0.16)",
+                        ? "0 34px 110px rgba(22,24,29,0.28)"
+                        : "0 22px 70px rgba(22,24,29,0.18)",
                     }}
                   >
                     <div
@@ -326,7 +329,7 @@ function ProjectsCloud({
                         <img
                           src={project.cardImage}
                           alt={project.title}
-                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.08]"
                         />
                       ) : (
                         <div
@@ -336,8 +339,9 @@ function ProjectsCloud({
                           }}
                         />
                       )}
-
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/18 to-transparent" />
+                      <div className="absolute inset-0 project-card__glow" />
+                      <div className="absolute inset-x-5 top-4 h-14 rounded-full bg-white/18 blur-2xl" />
                       <div className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/20 px-3 py-1 text-[10px] tracking-[0.28em] text-white/80 backdrop-blur-sm">
                         {project.year}
                       </div>
@@ -352,6 +356,11 @@ function ProjectsCloud({
                           <div className="mt-2 text-2xl font-semibold leading-none tracking-[0.08em]">
                             {project.title}
                           </div>
+                          {project.logline && (
+                            <div className="mt-3 max-w-xs text-xs leading-relaxed text-white/72">
+                              {project.logline}
+                            </div>
+                          )}
                           <div className="mt-4 text-[11px] uppercase tracking-[0.28em] text-white/60">
                             Details
                           </div>
@@ -374,17 +383,17 @@ function ProjectsCloud({
                       </div>
                     </div>
 
-                    <div className="space-y-4 bg-white/85 p-5">
+                    <div className="space-y-4 bg-white/72 p-5 backdrop-blur-md">
                       <div className="flex items-center justify-between">
                         <div className="text-[10px] tracking-[0.35em] text-black/45">
                           {project.title.toUpperCase()}
                         </div>
                         <div className="text-[10px] tracking-[0.28em] text-black/30">
-                          OPEN
+                          {project.buttonLabel ?? "OPEN"}
                         </div>
                       </div>
                       <div className="text-[11px] leading-relaxed text-black/58">
-                        {project.role}
+                        {project.logline ?? project.role}
                       </div>
                     </div>
                   </div>
@@ -559,6 +568,19 @@ function DetailView({
             <div className="mt-7 text-[11px] uppercase tracking-[0.3em] text-black/30">
               {project.role}
             </div>
+
+            {project.externalLink && (
+              <div className="mt-6">
+                <a
+                  href={project.externalLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex rounded-full border border-black/10 px-4 py-3 text-[10px] tracking-[0.32em] text-black/55 transition-colors hover:border-black/30 hover:text-black/80"
+                >
+                  {project.buttonLabel ?? "OPEN LINK"} ↗
+                </a>
+              </div>
+            )}
           </div>
 
           {galleryImages.length > 1 && (
@@ -568,25 +590,32 @@ function DetailView({
               >
                 Floating Stills
               </div>
-              <div className="detail-carousel-rail">
-                <div
-                  className="detail-carousel-track"
-                  style={{
-                    transform: `translateX(calc(50% - ${activeImage * 14}rem - 7rem))`,
-                  }}
-                >
-                  {galleryImages.map((image, index) => (
+              <div className="detail-stills-cloud">
+                {galleryImages.map((image, index) => {
+                  const offset = index - activeImage;
+                  const absOffset = Math.abs(offset);
+                  const clampedOffset = Math.max(-2, Math.min(2, offset));
+                  const translateX = clampedOffset * 9.5;
+                  const translateY = absOffset === 0 ? 0 : 1.25 + absOffset * 0.65;
+                  const rotate = clampedOffset * 5;
+                  const scale = absOffset === 0 ? 1 : absOffset === 1 ? 0.9 : 0.8;
+                  const opacity = absOffset > 2 ? 0 : absOffset === 0 ? 1 : absOffset === 1 ? 0.8 : 0.45;
+
+                  return (
                     <button
                       key={image}
                       type="button"
                       onClick={() => setActiveImage(index)}
                       className={`detail-still-card detail-still-card--floating overflow-hidden rounded-[24px] border bg-white/60 text-left transition-all ${
                         activeImage === index
-                          ? "border-black/35 shadow-[0_18px_55px_rgba(0,0,0,0.16)]"
+                          ? "border-black/30 shadow-[0_22px_70px_rgba(0,0,0,0.18)]"
                           : "border-black/10"
                       }`}
                       style={{
                         animationDelay: `${index * 0.35}s`,
+                        transform: `translate3d(${translateX}rem, ${translateY}rem, 0) rotate(${rotate}deg) scale(${scale})`,
+                        opacity,
+                        zIndex: 10 - absOffset,
                       }}
                     >
                       <img
@@ -595,8 +624,8 @@ function DetailView({
                         className="block h-56 w-56 object-cover"
                       />
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
               <div className="flex items-center justify-center gap-2">
                 {galleryImages.map((_, index) => (

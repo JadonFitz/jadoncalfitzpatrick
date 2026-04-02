@@ -3,6 +3,9 @@ export interface Project {
   description: string; director: string; color: string; accentColor: string; images: string[];
   cardImage?: string;
   keyCast?: string[];
+  logline?: string;
+  externalLink?: string;
+  buttonLabel?: string;
 }
 export const PROJECTS: Project[] = [
   {
@@ -28,7 +31,9 @@ export const PROJECTS: Project[] = [
     "cardImage": "/images/off-rip/card.jpg",
     "keyCast": [
       "Jadon Cal Fitzpatrick"
-    ]
+    ],
+    "logline": "A young skimboarder drifts toward love, violence, and the edge of himself on the Florida coast.",
+    "buttonLabel": "View Project"
   },
   {
     "id": "robbie",
@@ -46,7 +51,9 @@ export const PROJECTS: Project[] = [
     "cardImage": "/images/projects/robbie.jpg",
     "keyCast": [
       "Jadon Cal Fitzpatrick"
-    ]
+    ],
+    "logline": "A sister returns to find her brother changed in ways she cannot explain.",
+    "buttonLabel": "View Project"
   },
   {
     "id": "florida-wild",
@@ -64,7 +71,9 @@ export const PROJECTS: Project[] = [
     "cardImage": "/images/projects/florida-wild.jpg",
     "keyCast": [
       "Jadon Cal Fitzpatrick"
-    ]
+    ],
+    "logline": "Human drama and Florida wilderness blur into the same haunted landscape.",
+    "buttonLabel": "View Project"
   },
   {
     "id": "bot-or-not",
@@ -83,7 +92,9 @@ export const PROJECTS: Project[] = [
     "keyCast": [
       "Jadon Cal Fitzpatrick",
       "Meghan Carrasquillo"
-    ]
+    ],
+    "logline": "A fractured love story asks whether intimacy survives in a world of constructed selves.",
+    "buttonLabel": "View Project"
   },
   {
     "id": "the-painted",
@@ -101,7 +112,9 @@ export const PROJECTS: Project[] = [
     "cardImage": "/images/projects/the-painted.jpg",
     "keyCast": [
       "Jadon Cal Fitzpatrick"
-    ]
+    ],
+    "logline": "Memory, ritual, and guilt collapse into a single defining act.",
+    "buttonLabel": "View Project"
   },
   {
     "id": "stream",
@@ -119,7 +132,9 @@ export const PROJECTS: Project[] = [
     "cardImage": "/images/projects/stream.jpg",
     "keyCast": [
       "Jadon Cal Fitzpatrick"
-    ]
+    ],
+    "logline": "A figure moves through a world that feels only slightly out of phase.",
+    "buttonLabel": "View Project"
   }
 ];
 export const WHATS_NEXT = {
