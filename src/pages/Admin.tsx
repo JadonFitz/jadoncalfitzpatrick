@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PROJECTS, WHATS_NEXT, type Project } from "../data/projects";
 import { DEFAULT_CONFIG, type SiteConfig } from "../data/site-config";
 
@@ -10,16 +10,41 @@ export default function Admin() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [activeTab, setActiveTab] = useState<"projects" | "home" | "styles" | "credits">("projects");
   const [editedProjects, setEditedProjects] = useState<Project[]>(PROJECTS);
   const [editedHome, setEditedHome] = useState(DEFAULT_CONFIG.home);
   const [editedStyles, setEditedStyles] = useState(DEFAULT_CONFIG.styles);
   const [editedCredits, setEditedCredits] = useState({
-    robbieDirector: "Unknown",
-    floridaWildDirector: "Unknown",
-    paintedDirector: "Unknown",
+    robbieDirector: PROJECTS.find((project) => project.id === "robbie")?.director ?? "Unknown",
+    floridaWildDirector: PROJECTS.find((project) => project.id === "florida-wild")?.director ?? "Unknown",
+    paintedDirector: PROJECTS.find((project) => project.id === "the-painted")?.director ?? "Unknown",
     yourName: "Jadon Cal Fitzpatrick",
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/data/site-config.json")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: Partial<SiteConfig> | null) => {
+        if (!data || cancelled) return;
+
+        setEditedHome({
+          ...DEFAULT_CONFIG.home,
+          ...(data.home ?? {}),
+        });
+        setEditedStyles({
+          ...DEFAULT_CONFIG.styles,
+          ...(data.styles ?? {}),
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleLogin = () => {
     if (passwordInput === ADMIN_PASSWORD) {
@@ -36,7 +61,24 @@ export default function Admin() {
 
   const updateProject = (index: number, field: keyof Project, value: string) => {
     const updated = [...editedProjects];
-    (updated[index] as any)[field] = value;
+    updated[index] = { ...updated[index], [field]: value };
+    setEditedProjects(updated);
+    setSaved(false);
+  };
+
+  const updateProjectList = (
+    index: number,
+    field: "images" | "keyCast",
+    value: string,
+  ) => {
+    const updated = [...editedProjects];
+    updated[index] = {
+      ...updated[index],
+      [field]: value
+        .split(/\n|,/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    };
     setEditedProjects(updated);
     setSaved(false);
   };
@@ -48,10 +90,11 @@ export default function Admin() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError("");
     let ok = true;
 
     // Merge credits into editedProjects before saving
-    const projectsToSave = editedProjects.map(p => {
+    const projectsToSave = editedProjects.map((p) => {
       if (p.id === "robbie") return { ...p, director: editedCredits.robbieDirector };
       if (p.id === "florida-wild") return { ...p, director: editedCredits.floridaWildDirector };
       if (p.id === "the-painted") return { ...p, director: editedCredits.paintedDirector };
@@ -62,25 +105,42 @@ export default function Admin() {
     const projectsContent = `export interface Project {
   id: string; title: string; role: string; year: string; type: string;
   description: string; director: string; color: string; accentColor: string; images: string[];
+  cardImage?: string;
+  keyCast?: string[];
 }
 export const PROJECTS: Project[] = ${JSON.stringify(projectsToSave, null, 2)};
 export const WHATS_NEXT = ${JSON.stringify(WHATS_NEXT, null, 2)};
 `;
-    const pr = await fetch("/api/admin/save-projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: projectsContent }),
-    });
-    if (!pr.ok) ok = false;
-
-    // Save site config
     const config = { home: editedHome, styles: editedStyles };
-    const cr = await fetch("/api/admin/save-config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: JSON.stringify(config, null, 2) }),
-    });
-    if (!cr.ok) ok = false;
+
+    try {
+      const [pr, cr] = await Promise.all([
+        fetch("/api/admin/save-projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: projectsContent }),
+        }),
+        fetch("/api/admin/save-config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: JSON.stringify(config, null, 2) }),
+        }),
+      ]);
+
+      if (!pr.ok || !cr.ok) {
+        ok = false;
+
+        const [projectError, configError] = await Promise.all([
+          pr.ok ? Promise.resolve("") : pr.text(),
+          cr.ok ? Promise.resolve("") : cr.text(),
+        ]);
+
+        setSaveError(projectError || configError || "Save failed.");
+      }
+    } catch (err) {
+      ok = false;
+      setSaveError(err instanceof Error ? err.message : "Save failed.");
+    }
 
     if (ok) {
       setSaved(true);
@@ -129,6 +189,11 @@ export const WHATS_NEXT = ${JSON.stringify(WHATS_NEXT, null, 2)};
             {saving ? "Saving..." : saved ? "Saved" : "Save All"}
           </button>
         </div>
+        {saveError && (
+          <div className="max-w-5xl mx-auto mt-3 text-[10px] tracking-[0.2em] text-red-500 uppercase">
+            {saveError}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -151,6 +216,9 @@ export const WHATS_NEXT = ${JSON.stringify(WHATS_NEXT, null, 2)};
                     <div className="col-span-2"><Field label="Description" value={project.description} onChange={(v) => updateProject(i, "description", v)} textarea /></div>
                     <Field label="Card Color" value={project.color} onChange={(v) => updateProject(i, "color", v)} />
                     <Field label="Accent Color" value={project.accentColor} onChange={(v) => updateProject(i, "accentColor", v)} />
+                    <div className="col-span-2"><Field label="Card Image Path" value={project.cardImage ?? ""} onChange={(v) => updateProject(i, "cardImage", v)} /></div>
+                    <div className="col-span-2"><Field label="Key Cast (comma or new line separated)" value={(project.keyCast ?? []).join("\n")} onChange={(v) => updateProjectList(i, "keyCast", v)} textarea /></div>
+                    <div className="col-span-2"><Field label="Gallery Images (comma or new line separated)" value={project.images.join("\n")} onChange={(v) => updateProjectList(i, "images", v)} textarea /></div>
                   </div>
                 </div>
               </div>

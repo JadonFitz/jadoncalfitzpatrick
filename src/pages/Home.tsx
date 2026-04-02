@@ -1,40 +1,45 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PROJECTS, WHATS_NEXT, type Project } from "../data/projects";
 import { DEFAULT_CONFIG, type SiteConfig } from "../data/site-config";
 
-interface FloatState { x: number; y: number; r: number; }
+interface PointerState {
+  x: number;
+  y: number;
+}
 
 const CARD_FLOAT_CLASSES = [
+  "floatCard0",
   "floatCard1",
   "floatCard2",
   "floatCard3",
   "floatCard4",
   "floatCard5",
-  "floatCard6",
 ];
 
 export default function Home() {
   const [phase, setPhase] = useState<"home" | "projects" | "detail">("home");
   const [config, setConfig] = useState<SiteConfig>(DEFAULT_CONFIG);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [nameShake, setNameShake] = useState({ x: 0, y: 0 });
   const [blurProgress, setBlurProgress] = useState(1);
-  const [floats, setFloats] = useState<FloatState[]>(PROJECTS.map(() => ({ x: 0, y: 0, r: 0 })));
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
-  const floatTimeRef = useRef(0);
-  const animFrameRef = useRef<number>(0);
+  const [projectPointer, setProjectPointer] = useState<PointerState>({ x: 0, y: 0 });
 
-  // Load site config
   useEffect(() => {
     fetch("/data/site-config.json")
-      .then((r) => r.ok ? r.json() : null)
+      .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
-        if (data) setConfig({ ...DEFAULT_CONFIG, ...data, home: { ...DEFAULT_CONFIG.home, ...(data.home || {}) }, styles: { ...DEFAULT_CONFIG.styles, ...(data.styles || {}) } });
+        if (!data) return;
+        setConfig({
+          ...DEFAULT_CONFIG,
+          ...data,
+          home: { ...DEFAULT_CONFIG.home, ...(data.home ?? {}) },
+          styles: { ...DEFAULT_CONFIG.styles, ...(data.styles ?? {}) },
+        });
       })
       .catch(() => {});
   }, []);
 
-  // Blur-to-focus on mount
   useEffect(() => {
     const start = performance.now();
     const duration = 1800;
@@ -44,264 +49,597 @@ export default function Home() {
       setBlurProgress(1 - eased);
       if (t < 1) requestAnimationFrame(animate);
     };
-    const raf = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(raf);
+    const frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
   }, []);
 
-  // Float animation
-  useEffect(() => {
-    if (phase !== "projects") return;
-    const animate = () => {
-      floatTimeRef.current += 0.006;
-      setFloats(PROJECTS.map((_, i) => ({
-        x: Math.sin(floatTimeRef.current * 0.4 + i * 1.3) * 5,
-        y: Math.cos(floatTimeRef.current * 0.3 + i * 0.9) * 7,
-        r: Math.sin(floatTimeRef.current * 0.25 + i * 0.7) * 1.5,
-      })));
-      animFrameRef.current = requestAnimationFrame(animate);
-    };
-    animFrameRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, [phase]);
+  const selectedProjectIndex = useMemo(
+    () => PROJECTS.findIndex((project) => project.id === selectedProjectId),
+    [selectedProjectId],
+  );
+
+  const selectedProject =
+    selectedProjectIndex >= 0 ? PROJECTS[selectedProjectIndex] : null;
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (phase === "home") {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dx = (e.clientX - cx) / (window.innerWidth / 2);
-      const dy = (e.clientY - cy) / (window.innerHeight / 2);
-      setNameShake({ x: -dx * 4, y: -dy * 4 });
-    }
+    if (phase !== "home") return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = (e.clientX - cx) / (window.innerWidth / 2);
+    const dy = (e.clientY - cy) / (window.innerHeight / 2);
+    setNameShake({ x: -dx * 4, y: -dy * 4 });
   };
 
-  const enterProjects = () => { setPhase("projects"); setSelectedProject(null); };
-  const goHome = () => { setPhase("home"); setSelectedProject(null); };
-  const openProject = (p: Project) => { setSelectedProject(p); setPhase("detail"); };
+  const enterProjects = () => {
+    setPhase("projects");
+    setSelectedProjectId(null);
+  };
 
-  const { home: h, styles: s } = config;
+  const goHome = () => {
+    setPhase("home");
+    setSelectedProjectId(null);
+    setHoveredProject(null);
+    setProjectPointer({ x: 0, y: 0 });
+  };
+
+  const openProject = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setPhase("detail");
+  };
+
+  const navigateProject = (direction: -1 | 1) => {
+    if (selectedProjectIndex < 0) return;
+    const nextIndex =
+      (selectedProjectIndex + direction + PROJECTS.length) % PROJECTS.length;
+    setSelectedProjectId(PROJECTS[nextIndex].id);
+  };
 
   return (
     <div
-      className="relative w-screen h-screen overflow-hidden select-none"
-      style={{ background: "#ffffff", fontFamily: s.fontFamily }}
+      className="relative h-screen w-screen overflow-hidden select-none"
+      style={{ background: "#ffffff", fontFamily: config.styles.fontFamily }}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => phase === "home" && setNameShake({ x: 0, y: 0 })}
     >
-      {/* HOME STATE */}
       {phase === "home" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div
-            onClick={enterProjects}
-            className="cursor-pointer text-center"
-            style={{
-              transform: `translate(${nameShake.x}px, ${nameShake.y}px)`,
-              transition: "transform 0.12s ease-out",
-              filter: `blur(${blurProgress * 24}px)`,
-              opacity: 1 - blurProgress * 0.3,
-            }}
-          >
-            <div
-              className="text-black"
-              style={{
-                fontSize: s.nameSize,
-                fontWeight: s.nameWeight,
-                letterSpacing: s.letterSpacing,
-                opacity: parseFloat(s.nameOpacity),
-                lineHeight: 1,
-              }}
-            >
-              {h.name}
-            </div>
-            <div
-              className="text-black mt-3"
-              style={{
-                fontSize: s.surnameSize,
-                letterSpacing: s.surnameLetterSpacing,
-                opacity: parseFloat(s.surnameOpacity),
-              }}
-            >
-              {h.surname}
-            </div>
-            <div
-              className="text-black mt-6"
-              style={{
-                fontSize: s.clickSize,
-                letterSpacing: s.clickLetterSpacing,
-                opacity: parseFloat(s.clickOpacity),
-              }}
-            >
-              {h.clickToEnter}
-            </div>
-          </div>
-          <div
-            className="absolute bottom-10 text-black"
-            style={{ fontSize: s.taglineSize, letterSpacing: s.letterSpacing, opacity: parseFloat(s.taglineOpacity) }}
-          >
-            {h.tagline}
-          </div>
-          <div
-            className="absolute bottom-6 right-8 text-black"
-            style={{ fontSize: "0.6rem", letterSpacing: "0.3em", opacity: parseFloat(s.footerOpacity) }}
-          >
-            {h.footer}
-          </div>
-        </div>
+        <OpeningShot
+          config={config}
+          blurProgress={blurProgress}
+          nameShake={nameShake}
+          onEnter={enterProjects}
+        />
       )}
 
-      {/* PROJECTS STATE */}
       {phase === "projects" && (
-        <div className="absolute inset-0 flex flex-col">
-          <div className="flex justify-between items-center px-10 pt-10 pb-6">
-            <button onClick={goHome} className="text-black text-xs tracking-widest opacity-30 hover:opacity-80 transition-opacity" style={{ letterSpacing: "0.3em" }}>
-              ← BACK
-            </button>
-            <div className="text-black text-xs tracking-widest opacity-20" style={{ letterSpacing: "0.4em" }}>
-              SELECTED WORK
-            </div>
-            <a
-              href="https://newterraincreative.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-black text-xs tracking-widest opacity-20 hover:opacity-80 transition-opacity"
-              style={{ letterSpacing: "0.3em" }}
-            >
-              NEW TERRAIN CREATIVE ↗
-            </a>
-          </div>
-
-          {/* Grid: 2 rows × 3 cols, centered */}
-          <div className="flex-1 flex items-center justify-center px-16">
-            <div className="grid grid-cols-3 gap-x-16 gap-y-16 w-full max-w-4xl">
-              {PROJECTS.map((project, i) => (
-                <div
-                  key={project.id}
-                  onClick={() => openProject(project)}
-                  onMouseEnter={() => setHoveredProject(project.id)}
-                  onMouseLeave={() => setHoveredProject(null)}
-                  className={`cursor-pointer ${CARD_FLOAT_CLASSES[i]} ${hoveredProject === project.id ? "animate-pause" : ""}`}
-                  style={{
-                    opacity: hoveredProject && hoveredProject !== project.id ? 0.35 : 1,
-                    transform: hoveredProject === project.id ? "scale(1.06)" : "scale(1)",
-                    transition: "all 0.3s ease",
-                    zIndex: hoveredProject === project.id ? 10 : 1,
-                  }}
-                >
-                  <div
-                    className="rounded-sm p-4 flex flex-col items-center"
-                    style={{
-                      background: project.color,
-                      boxShadow: hoveredProject === project.id ? "0 16px 48px rgba(0,0,0,0.2)" : "0 6px 20px rgba(0,0,0,0.08)",
-                    }}
-                  >
-                    <div className="w-16 h-10 rounded-sm mb-2 overflow-hidden">
-                      <div className="w-full h-full" style={{ background: project.accentColor }} />
-                    </div>
-                    <div className="text-white text-xs font-bold text-center leading-tight tracking-wider" style={{ letterSpacing: "0.08em" }}>
-                      {project.title}
-                    </div>
-                    <div className="text-white/40 text-[9px] mt-2 text-center leading-tight">
-                      {project.role.split(" / ").map((r, idx) => (
-                        <div key={idx}>{r}</div>
-                      ))}
-                    </div>
-                    <div className="text-white/20 text-[8px] mt-2 tracking-widest">{project.year}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ADMIN link — bottom right */}
-          <a
-            href="/admin"
-            target="_blank"
-            className="absolute bottom-6 right-8 text-black text-[10px] tracking-widest opacity-50 hover:opacity-100 transition-opacity"
-            style={{ letterSpacing: "0.3em" }}
-          >
-            ADMIN ↗
-          </a>
-        </div>
+        <ProjectsCloud
+          config={config}
+          hoveredProject={hoveredProject}
+          onHoverProject={setHoveredProject}
+          onOpenProject={openProject}
+          onPointerChange={setProjectPointer}
+          onResetPointer={() => {
+            setProjectPointer({ x: 0, y: 0 });
+            setHoveredProject(null);
+          }}
+          projectPointer={projectPointer}
+          onGoHome={goHome}
+        />
       )}
 
-      {/* DETAIL STATE */}
       {phase === "detail" && selectedProject && (
-        <DetailView project={selectedProject} config={config} onBack={() => setPhase("projects")} />
+        <DetailView
+          project={selectedProject}
+          projectIndex={selectedProjectIndex}
+          config={config}
+          onBack={() => setPhase("projects")}
+          onNavigateProject={navigateProject}
+        />
       )}
     </div>
   );
 }
 
-function DetailView({ project, config, onBack }: { project: Project; config: SiteConfig; onBack: () => void }) {
-  const { home: h } = config;
-  const paragraphs = project.description.split("\n\n").filter(Boolean);
+function OpeningShot({
+  config,
+  blurProgress,
+  nameShake,
+  onEnter,
+}: {
+  config: SiteConfig;
+  blurProgress: number;
+  nameShake: { x: number; y: number };
+  onEnter: () => void;
+}) {
+  const { home, styles } = config;
 
   return (
-    <div className="absolute inset-0 flex flex-col" style={{ background: "#ffffff", fontFamily: config.styles.fontFamily }}>
-      {/* Top nav */}
-      <div className="flex justify-between items-center px-10 pt-10">
-        <button onClick={onBack} className="text-black text-xs tracking-widest opacity-30 hover:opacity-80 transition-opacity" style={{ letterSpacing: "0.3em" }}>
+    <div className="absolute inset-0 flex flex-col items-center justify-center">
+      <div
+        onClick={onEnter}
+        className="cursor-pointer text-center"
+        style={{
+          transform: `translate(${nameShake.x}px, ${nameShake.y}px)`,
+          transition: "transform 0.12s ease-out",
+          filter: `blur(${blurProgress * 24}px)`,
+          opacity: 1 - blurProgress * 0.3,
+        }}
+      >
+        <div
+          className="text-black"
+          style={{
+            fontSize: styles.nameSize,
+            fontWeight: styles.nameWeight,
+            letterSpacing: styles.letterSpacing,
+            opacity: parseFloat(styles.nameOpacity),
+            lineHeight: 1,
+          }}
+        >
+          {home.name}
+        </div>
+        <div
+          className="mt-3 text-black"
+          style={{
+            fontSize: styles.surnameSize,
+            letterSpacing: styles.surnameLetterSpacing,
+            opacity: parseFloat(styles.surnameOpacity),
+          }}
+        >
+          {home.surname}
+        </div>
+        <div
+          className="mt-6 text-black"
+          style={{
+            fontSize: styles.clickSize,
+            letterSpacing: styles.clickLetterSpacing,
+            opacity: parseFloat(styles.clickOpacity),
+          }}
+        >
+          {home.clickToEnter}
+        </div>
+      </div>
+
+      <div
+        className="absolute bottom-10 text-black"
+        style={{
+          fontSize: styles.taglineSize,
+          letterSpacing: styles.letterSpacing,
+          opacity: parseFloat(styles.taglineOpacity),
+        }}
+      >
+        {home.tagline}
+      </div>
+      <div
+        className="absolute bottom-6 right-8 text-black"
+        style={{
+          fontSize: "0.6rem",
+          letterSpacing: "0.3em",
+          opacity: parseFloat(styles.footerOpacity),
+        }}
+      >
+        {home.footer}
+      </div>
+    </div>
+  );
+}
+
+function ProjectsCloud({
+  config,
+  hoveredProject,
+  onHoverProject,
+  onOpenProject,
+  onPointerChange,
+  onResetPointer,
+  projectPointer,
+  onGoHome,
+}: {
+  config: SiteConfig;
+  hoveredProject: string | null;
+  onHoverProject: (id: string | null) => void;
+  onOpenProject: (id: string) => void;
+  onPointerChange: (pointer: PointerState) => void;
+  onResetPointer: () => void;
+  projectPointer: PointerState;
+  onGoHome: () => void;
+}) {
+  const handleProjectsPointer = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+    onPointerChange({ x, y });
+  };
+
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      <div className="flex items-center justify-between px-10 pt-10 pb-6">
+        <button
+          onClick={onGoHome}
+          className="text-xs tracking-widest text-black opacity-30 transition-opacity hover:opacity-80"
+          style={{ letterSpacing: "0.3em" }}
+        >
           ← BACK
         </button>
-        <div className="text-black text-xs tracking-widest opacity-20" style={{ letterSpacing: "0.4em" }}>
-          {project.year}
+        <div
+          className="text-xs tracking-widest text-black opacity-20"
+          style={{ letterSpacing: "0.4em" }}
+        >
+          SELECTED WORK
         </div>
-        <div className="w-16" />
+        <div
+          className="text-xs tracking-widest text-black opacity-20"
+          style={{ letterSpacing: "0.3em" }}
+        >
+          FLOATING INDEX
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-16 py-8">
-        <div className="max-w-2xl w-full text-center space-y-8">
-          <div>
-            <div className="text-black text-[10px] tracking-widest opacity-30 mb-3" style={{ letterSpacing: "0.4em" }}>
+      <div
+        className="project-atmosphere flex-1 px-6 pb-20 md:px-10"
+        onMouseMove={handleProjectsPointer}
+        onMouseLeave={onResetPointer}
+      >
+        <div className="project-atmosphere__veil" />
+        <div className="project-atmosphere__grain" />
+        <div className="project-atmosphere__halo" />
+
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {PROJECTS.map((project, index) => {
+            const isHovered = hoveredProject === project.id;
+            const hasOtherHover = hoveredProject && !isHovered;
+
+            return (
+              <div
+                key={project.id}
+                className="project-card-shell"
+                style={{
+                  transform: `translate3d(${projectPointer.x * (8 + index * 1.5)}px, ${projectPointer.y * (10 + index * 1.5)}px, 0)`,
+                }}
+              >
+                <div
+                  onClick={() => onOpenProject(project.id)}
+                  onMouseEnter={() => onHoverProject(project.id)}
+                  onMouseLeave={() => onHoverProject(null)}
+                  className={`project-card cursor-pointer ${CARD_FLOAT_CLASSES[index]} ${isHovered ? "animate-pause" : ""}`}
+                  style={{
+                    opacity: hasOtherHover ? 0.3 : 1,
+                    transform: `rotate(${projectPointer.x * (index % 2 === 0 ? -1.8 : 1.8)}deg) translateY(${isHovered ? "-14px" : "0px"}) scale(${isHovered ? 1.05 : 1})`,
+                    transition: "transform 0.35s ease, opacity 0.35s ease",
+                    zIndex: isHovered ? 10 : 1,
+                  }}
+                >
+                  <div
+                    className="group overflow-hidden rounded-[28px] border border-white/20 bg-white/10 backdrop-blur-sm"
+                    style={{
+                      boxShadow: isHovered
+                        ? "0 30px 100px rgba(0,0,0,0.28)"
+                        : "0 18px 60px rgba(0,0,0,0.16)",
+                    }}
+                  >
+                    <div
+                      className="relative h-[24rem] w-full overflow-hidden"
+                      style={{
+                        background: `linear-gradient(160deg, ${project.color}, ${project.accentColor})`,
+                      }}
+                    >
+                      {project.cardImage ? (
+                        <img
+                          src={project.cardImage}
+                          alt={project.title}
+                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div
+                          className="h-full w-full"
+                          style={{
+                            background: `linear-gradient(160deg, ${project.color}, ${project.accentColor})`,
+                          }}
+                        />
+                      )}
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
+                      <div className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/20 px-3 py-1 text-[10px] tracking-[0.28em] text-white/80 backdrop-blur-sm">
+                        {project.year}
+                      </div>
+
+                      <div
+                        className={`absolute inset-0 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+                      >
+                        <div className="absolute inset-x-0 bottom-0 p-6 text-white">
+                          <div className="text-[10px] tracking-[0.36em] text-white/65">
+                            {project.type.toUpperCase()}
+                          </div>
+                          <div className="mt-2 text-2xl font-semibold leading-none tracking-[0.08em]">
+                            {project.title}
+                          </div>
+                          <div className="mt-4 text-[11px] uppercase tracking-[0.28em] text-white/60">
+                            Details
+                          </div>
+                          <div className="mt-3 space-y-1 text-sm leading-relaxed text-white/78">
+                            <div>
+                              {project.director !== "Unknown"
+                                ? `Dir. ${project.director}`
+                                : project.role}
+                            </div>
+                            <div>
+                              {project.keyCast?.length
+                                ? `Cast: ${project.keyCast.join(", ")}`
+                                : project.role}
+                            </div>
+                            <div>
+                              {project.year} / {project.type}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 bg-white/85 p-5">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[10px] tracking-[0.35em] text-black/45">
+                          {project.title.toUpperCase()}
+                        </div>
+                        <div className="text-[10px] tracking-[0.28em] text-black/30">
+                          OPEN
+                        </div>
+                      </div>
+                      <div className="text-[11px] leading-relaxed text-black/58">
+                        {project.role}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <a
+          href="/admin"
+          target="_blank"
+          className="absolute bottom-6 right-8 text-[10px] tracking-widest text-black opacity-50 transition-opacity hover:opacity-100"
+          style={{ letterSpacing: "0.3em" }}
+        >
+          ADMIN ↗
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function DetailView({
+  project,
+  projectIndex,
+  config,
+  onBack,
+  onNavigateProject,
+}: {
+  project: Project;
+  projectIndex: number;
+  config: SiteConfig;
+  onBack: () => void;
+  onNavigateProject: (direction: -1 | 1) => void;
+}) {
+  const [activeImage, setActiveImage] = useState(0);
+  const paragraphs = project.description.split("\n\n").filter(Boolean);
+  const galleryImages =
+    project.images.length > 0
+      ? project.images
+      : project.cardImage
+        ? [project.cardImage]
+        : [];
+  const activeVisual = galleryImages[activeImage] ?? project.cardImage;
+
+  useEffect(() => {
+    setActiveImage(0);
+  }, [project.id]);
+
+  useEffect(() => {
+    if (galleryImages.length <= 1) return;
+
+    const timer = window.setInterval(() => {
+      setActiveImage((current) => (current + 1) % galleryImages.length);
+    }, 3600);
+
+    return () => window.clearInterval(timer);
+  }, [galleryImages.length, project.id]);
+
+  return (
+    <div
+      className="detail-atmosphere absolute inset-0 overflow-y-auto"
+      style={{ background: "#f8f5f0", fontFamily: config.styles.fontFamily }}
+    >
+      <div
+        className="detail-atmosphere__halo"
+        style={{
+          background: `radial-gradient(circle at 20% 20%, ${project.accentColor}33, transparent 38%), radial-gradient(circle at 80% 18%, ${project.color}22, transparent 34%), radial-gradient(circle at 50% 70%, rgba(255,255,255,0.88), transparent 58%)`,
+        }}
+      />
+
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-black/5 bg-white/85 px-6 py-6 backdrop-blur-sm md:px-10">
+        <button
+          onClick={onBack}
+          className="text-xs tracking-widest text-black opacity-30 transition-opacity hover:opacity-80"
+          style={{ letterSpacing: "0.3em" }}
+        >
+          ← BACK
+        </button>
+        <div
+          className="text-xs tracking-widest text-black opacity-20"
+          style={{ letterSpacing: "0.4em" }}
+        >
+          {String(projectIndex + 1).padStart(2, "0")} / {String(PROJECTS.length).padStart(2, "0")}
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onNavigateProject(-1)}
+            className="rounded-full border border-black/10 px-3 py-2 text-[10px] tracking-[0.28em] text-black/45 transition-colors hover:border-black/30 hover:text-black/75"
+          >
+            PREV
+          </button>
+          <button
+            onClick={() => onNavigateProject(1)}
+            className="rounded-full border border-black/10 px-3 py-2 text-[10px] tracking-[0.28em] text-black/45 transition-colors hover:border-black/30 hover:text-black/75"
+          >
+            NEXT
+          </button>
+        </div>
+      </div>
+
+      <div className="px-6 py-8 md:px-10 md:py-12">
+        <div className="mx-auto max-w-5xl">
+          {activeVisual && (
+            <div className="detail-hero-panel overflow-hidden rounded-[36px] border border-white/40 bg-white/55 shadow-[0_28px_120px_rgba(0,0,0,0.14)] backdrop-blur-sm">
+              <img
+                src={activeVisual}
+                alt={project.title}
+                className="block h-[46vh] w-full object-cover md:h-[62vh]"
+              />
+            </div>
+          )}
+
+          <div className="mx-auto -mt-8 max-w-3xl rounded-[34px] border border-white/40 bg-white/72 p-8 text-center shadow-[0_22px_90px_rgba(0,0,0,0.09)] backdrop-blur-md md:p-10">
+            <div
+              className="mb-3 text-[10px] tracking-widest text-black/30"
+              style={{ letterSpacing: "0.4em" }}
+            >
               {project.type.toUpperCase()}
             </div>
-            <h1 className="text-black text-4xl font-bold tracking-wider" style={{ letterSpacing: "0.15em" }}>
+            <h1
+              className="text-4xl font-bold tracking-wider text-black md:text-5xl"
+              style={{ letterSpacing: "0.12em" }}
+            >
               {project.title}
             </h1>
-            <div className="text-black/40 text-xs mt-3 tracking-widest" style={{ letterSpacing: "0.25em" }}>
-              {project.role}
-            </div>
-            {project.director && project.director !== "Unknown" && (
-              <div className="text-black/20 text-[10px] mt-1 tracking-widest" style={{ letterSpacing: "0.3em" }}>
-                DIR. {project.director}
+            <div className="mt-4 grid grid-cols-1 gap-4 border-y border-black/5 py-5 text-center md:grid-cols-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-black/25">
+                  Director
+                </div>
+                <div className="mt-2 text-sm text-black/72">
+                  {project.director !== "Unknown" ? project.director : "TBA"}
+                </div>
               </div>
-            )}
-          </div>
-
-          <div className="space-y-5">
-            {paragraphs.map((para, i) => (
-              <p key={i} className="text-black text-sm leading-relaxed" style={{ fontFamily: config.styles.fontFamily, opacity: i === 0 ? 0.85 : 0.65 }}>
-                {para}
-              </p>
-            ))}
-          </div>
-
-          <div className="pt-4">
-            <div className="text-black/20 text-[10px] tracking-widest" style={{ letterSpacing: "0.4em" }}>
-              {project.year}
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-black/25">
+                  Key Cast
+                </div>
+                <div className="mt-2 text-sm text-black/72">
+                  {project.keyCast?.join(", ") ?? "Jadon Cal Fitzpatrick"}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-black/25">
+                  Year / Format
+                </div>
+                <div className="mt-2 text-sm text-black/72">
+                  {project.year} / {project.type}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* What's Next — only on last project */}
-      {project.id === "stream" && (
-        <div className="border-t border-black/5 px-16 py-12">
-          <div className="max-w-2xl">
-            <div className="text-black text-[10px] tracking-widest opacity-20 mb-4" style={{ letterSpacing: "0.4em" }}>
-              WHAT'S NEXT
-            </div>
-            <div className="space-y-5">
-              {WHATS_NEXT.description.split("\n\n").map((para, i) => (
-                <p key={i} className="text-black text-sm leading-relaxed" style={{ fontFamily: config.styles.fontFamily, opacity: i === 0 ? 0.85 : 0.65 }}>
-                  {para}
+            <div className="mt-6 space-y-5 text-left">
+              <div className="text-center text-[10px] uppercase tracking-[0.3em] text-black/25">
+                Storyline
+              </div>
+              {paragraphs.map((paragraph, index) => (
+                <p
+                  key={index}
+                  className="text-sm leading-relaxed text-black md:text-[15px]"
+                  style={{
+                    fontFamily: config.styles.fontFamily,
+                    opacity: index === 0 ? 0.9 : 0.68,
+                  }}
+                >
+                  {paragraph}
                 </p>
               ))}
             </div>
+
+            <div className="mt-7 text-[11px] uppercase tracking-[0.3em] text-black/30">
+              {project.role}
+            </div>
           </div>
+
+          {galleryImages.length > 1 && (
+            <div className="mt-10 space-y-6">
+              <div
+                className="text-center text-[10px] uppercase tracking-[0.36em] text-black/25"
+              >
+                Floating Stills
+              </div>
+              <div className="detail-carousel-rail">
+                <div
+                  className="detail-carousel-track"
+                  style={{
+                    transform: `translateX(calc(50% - ${activeImage * 14}rem - 7rem))`,
+                  }}
+                >
+                  {galleryImages.map((image, index) => (
+                    <button
+                      key={image}
+                      type="button"
+                      onClick={() => setActiveImage(index)}
+                      className={`detail-still-card detail-still-card--floating overflow-hidden rounded-[24px] border bg-white/60 text-left transition-all ${
+                        activeImage === index
+                          ? "border-black/35 shadow-[0_18px_55px_rgba(0,0,0,0.16)]"
+                          : "border-black/10"
+                      }`}
+                      style={{
+                        animationDelay: `${index * 0.35}s`,
+                      }}
+                    >
+                      <img
+                        src={image}
+                        alt={`${project.title} still ${index + 1}`}
+                        className="block h-56 w-56 object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                {galleryImages.map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    aria-label={`Go to still ${index + 1}`}
+                    onClick={() => setActiveImage(index)}
+                    className={`h-2.5 w-2.5 rounded-full transition-all ${
+                      activeImage === index ? "bg-black/55 scale-110" : "bg-black/15"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {project.id === "stream" && (
+            <div className="mx-auto mt-14 max-w-3xl border-t border-black/5 pt-10 text-center">
+              <div
+                className="mb-4 text-[10px] tracking-widest text-black/20"
+                style={{ letterSpacing: "0.4em" }}
+              >
+                WHAT'S NEXT
+              </div>
+              <div className="space-y-5 text-left">
+                {WHATS_NEXT.description.split("\n\n").map((paragraph, index) => (
+                  <p
+                    key={index}
+                    className="text-sm leading-relaxed text-black md:text-[15px]"
+                    style={{
+                      fontFamily: config.styles.fontFamily,
+                      opacity: index === 0 ? 0.85 : 0.65,
+                    }}
+                  >
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -191,3 +191,93 @@ html, body, #root {
 .floatCard5 { animation: floatCard5 9s  ease-in-out infinite 3s; }
 
 .animate-pause { animation-play-state: paused; }
+
+.project-atmosphere {
+  position: relative;
+  overflow: hidden;
+}
+
+.project-atmosphere__veil,
+.project-atmosphere__grain,
+.project-atmosphere__halo,
+.detail-atmosphere__halo {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+.project-atmosphere__veil {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(214, 199, 177, 0.32), transparent 28%),
+    radial-gradient(circle at 82% 26%, rgba(56, 67, 82, 0.12), transparent 26%),
+    radial-gradient(circle at 58% 76%, rgba(189, 168, 145, 0.18), transparent 33%);
+}
+
+.project-atmosphere__grain {
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.16) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(circle at center, black 44%, transparent 100%);
+}
+
+.project-atmosphere__halo {
+  background:
+    radial-gradient(circle at 22% 14%, rgba(255, 255, 255, 0.85), transparent 18%),
+    radial-gradient(circle at 78% 24%, rgba(255, 248, 236, 0.55), transparent 20%),
+    radial-gradient(circle at 52% 80%, rgba(244, 228, 211, 0.35), transparent 24%);
+}
+
+.project-card-shell {
+  transition: transform 0.35s ease;
+}
+
+.project-card {
+  position: relative;
+}
+
+.project-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 12% -22px;
+  height: 36px;
+  background: radial-gradient(circle, rgba(0,0,0,0.18), transparent 72%);
+  filter: blur(14px);
+  opacity: 0.7;
+  z-index: -1;
+}
+
+.detail-atmosphere {
+  position: absolute;
+}
+
+.detail-atmosphere__halo {
+  opacity: 0.92;
+}
+
+.detail-hero-panel,
+.detail-still-card {
+  animation: hoverStill 9s ease-in-out infinite;
+}
+
+.detail-carousel-rail {
+  overflow: hidden;
+  padding: 1rem 0;
+}
+
+.detail-carousel-track {
+  display: flex;
+  gap: 1rem;
+  width: max-content;
+  transition: transform 0.45s ease;
+}
+
+.detail-still-card--floating {
+  flex: 0 0 auto;
+}
+
+@keyframes hoverStill {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(0, -10px, 0) rotate(0.4deg); }
+}

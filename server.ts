@@ -1,4 +1,6 @@
 import { serveStatic } from "hono/bun";
+import { mkdir } from "node:fs/promises";
+import path from "node:path";
 import type { ViteDevServer } from "vite";
 import { createServer as createViteServer } from "vite";
 import config from "./zosite.json";
@@ -7,6 +9,10 @@ import { Hono } from "hono";
 // AI agents: read README.md for navigation and contribution guidance.
 type Mode = "development" | "production";
 const app = new Hono();
+const rootDir = import.meta.dir;
+const srcDataDir = path.join(rootDir, "src", "data");
+const publicDataDir = path.join(rootDir, "public", "data");
+const distDataDir = path.join(rootDir, "dist", "data");
 
 const mode: Mode =
   process.env.NODE_ENV === "production" ? "production" : "development";
@@ -19,7 +25,8 @@ app.get("/api/hello-zo", (c) => c.json({ msg: "Hello from Zo" }));
 app.post("/api/admin/save-projects", async (c) => {
   try {
     const { content } = await c.req.json();
-    await Bun.write("/home/workspace/jadoncalfitzpatrick/src/data/projects.ts", content);
+    await mkdir(srcDataDir, { recursive: true });
+    await Bun.write(path.join(srcDataDir, "projects.ts"), content);
     return c.json({ ok: true });
   } catch (e) {
     return c.json({ ok: false, error: String(e) }, 500);
@@ -29,9 +36,18 @@ app.post("/api/admin/save-projects", async (c) => {
 app.post("/api/admin/save-config", async (c) => {
   try {
     const { content } = await c.req.json();
-    await Bun.write("/home/workspace/jadoncalfitzpatrick/public/data/site-config.json", content);
-    await Bun.write("/home/workspace/jadoncalfitzpatrick/src/data/site-config.json", content);
-    await Bun.write("/home/workspace/jadoncalfitzpatrick/dist/data/site-config.json", content);
+    await Promise.all([
+      mkdir(publicDataDir, { recursive: true }),
+      mkdir(srcDataDir, { recursive: true }),
+      mkdir(distDataDir, { recursive: true }),
+    ]);
+
+    await Promise.all([
+      Bun.write(path.join(publicDataDir, "site-config.json"), content),
+      Bun.write(path.join(srcDataDir, "site-config.json"), content),
+      Bun.write(path.join(distDataDir, "site-config.json"), content),
+    ]);
+
     return c.json({ ok: true });
   } catch (e) {
     return c.json({ ok: false, error: String(e) }, 500);
