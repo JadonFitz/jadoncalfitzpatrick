@@ -1,20 +1,30 @@
 export interface Project {
   id: string; title: string; role: string; year: string; type: string;
   description: string; director: string; color: string; accentColor: string; images: string[];
-  cardImage: string;
+  cardImage?: string;
 }
 export const PROJECTS: Project[] = [
   {
     "id": "off-rip",
     "title": "Off Rip",
     "role": "Writer / Director / Lead Actor",
-    "year": "2024",
+    "year": "2025",
     "type": "Feature Film",
     "director": "Jadon Cal",
     "color": "#1a1a1a",
     "accentColor": "#333333",
+    "cardImage": "/images/off-rip/portrait.png",
     "description": "A raw, intimate portrait of surf culture and young love dissolving under pressure. Set against the humid Florida coastline, Off Rip explores what happens when passion and violence collide in the life of a twenty-something skimboarder chasing something he can't name. Written, directed, and performed with an rawness that blurs the line between character and confession.",
-    "images": []
+    "images": [
+      "/images/off-rip/still-02.jpg",
+      "/images/off-rip/still-05.jpg",
+      "/images/off-rip/still-08.jpg",
+      "/images/off-rip/still-07.jpg",
+      "/images/off-rip/still-01.jpg",
+      "/images/off-rip/still-03.jpg",
+      "/images/off-rip/still-06.jpg",
+      "/images/off-rip/still-04.jpg"
+    ]
   },
   {
     "id": "robbie",
