@@ -14,7 +14,7 @@ export const PROJECTS: Project[] = [
     "color": "#1a1a1a",
     "accentColor": "#333333",
     "cardImage": "/images/off-rip/portrait.png",
-    "description": "A raw, intimate portrait of surf culture and young love dissolving under pressure. Set against the humid Florida coastline, Off Rip explores what happens when passion and violence collide in the life of a twenty-something skimboarder chasing something he can't name. Written, directed, and performed with an rawness that blurs the line between character and confession.",
+    "description": "A young skimboarder supporting his single mother fights against all odds to become the man his family has never known but has always needed. Set against the humid Florida coastline, Off Rip is a raw, intimate portrait of surf culture, young love, and the slow cost of becoming — what happens when passion and violence collide in the life of a twenty-something chasing something he can't quite name, and finds out it was always there. Written, directed, and performed with a rawness that blurs the line between character and confession.",
     "images": [
       "/images/off-rip/still-02.jpg",
       "/images/off-rip/still-05.jpg",
