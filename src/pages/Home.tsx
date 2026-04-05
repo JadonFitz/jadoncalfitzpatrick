@@ -16,8 +16,16 @@ interface ExpandState {
 
 const PARALLAX_DEPTHS = [22, 14, 28, 18, 24, 12];
 
+function parseHash(): { phase: "home" | "projects"; projectId: string | null } {
+  const hash = window.location.hash.replace("#", "");
+  if (hash.startsWith("projects/")) return { phase: "projects", projectId: hash.slice(9) };
+  if (hash === "projects") return { phase: "projects", projectId: null };
+  return { phase: "home", projectId: null };
+}
+
 export default function Home() {
-  const [phase, setPhase] = useState<"home" | "projects">("home");
+  const initial = parseHash();
+  const [phase, setPhase] = useState<"home" | "projects">(initial.phase);
   const [config, setConfig] = useState<SiteConfig>(DEFAULT_CONFIG);
   const [nameShake, setNameShake] = useState({ x: 0, y: 0 });
   const [blurProgress, setBlurProgress] = useState(1);
@@ -26,7 +34,14 @@ export default function Home() {
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageVisible, setPageVisible] = useState(true);
-  const [expand, setExpand] = useState<ExpandState | null>(null);
+
+  // If refreshed directly on a project, open it immediately (no card animation)
+  const initialProject = initial.projectId ? PROJECTS.find(p => p.id === initial.projectId) ?? null : null;
+  const [expand, setExpand] = useState<ExpandState | null>(
+    initialProject
+      ? { project: initialProject, cardRect: new DOMRect(0, 0, window.innerWidth, window.innerHeight), phase: "open" }
+      : null
+  );
 
   const floatTimeRef   = useRef(0);
   const animFrameRef   = useRef<number>(0);
@@ -104,16 +119,43 @@ export default function Home() {
     };
   };
 
+  // Sync hash → state on browser back/forward
+  useEffect(() => {
+    const onPop = () => {
+      const { phase: p, projectId } = parseHash();
+      setPhase(p);
+      if (projectId) {
+        const project = PROJECTS.find(pr => pr.id === projectId);
+        if (project) {
+          setExpand({ project, cardRect: new DOMRect(0, 0, window.innerWidth, window.innerHeight), phase: "open" });
+        }
+      } else {
+        setExpand(null);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const changePage = (next: number) => {
     setPageVisible(false);
     setTimeout(() => { setPageIndex(next); setPageVisible(true); }, 220);
   };
 
-  const enterProjects = () => { setPhase("projects"); setPageIndex(0); };
-  const goHome        = () => { setPhase("home"); };
+  const enterProjects = () => {
+    setPhase("projects");
+    setPageIndex(0);
+    history.pushState(null, "", "#projects");
+  };
+
+  const goHome = () => {
+    setPhase("home");
+    history.pushState(null, "", "#");
+  };
 
   // Open project: animate card → fullscreen
   const openProject = (project: Project, cardRect: DOMRect) => {
+    history.pushState(null, "", `#projects/${project.id}`);
     setExpand({ project, cardRect, phase: "pre" });
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -124,6 +166,7 @@ export default function Home() {
 
   // Back: collapse overlay
   const handleBack = () => {
+    history.pushState(null, "", "#projects");
     setExpand(prev => prev ? { ...prev, phase: "closing" } : null);
   };
 
