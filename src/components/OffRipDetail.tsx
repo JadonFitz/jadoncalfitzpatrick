@@ -304,15 +304,6 @@ export default function OffRipDetail({ project, config, onBack }: Props) {
         padding: isMobile ? "48px 28px" : "clamp(60px, 8vw, 100px) clamp(24px, 8vw, 120px)",
         textAlign: "center",
       }}>
-        <div style={{
-          fontSize: isMobile ? "0.6rem" : "1.15rem",
-          letterSpacing: isMobile ? "0.12em" : "0.3em",
-          color: "rgba(0,0,0,0.35)",
-          marginBottom: "32px",
-          lineHeight: isMobile ? 1.6 : 1,
-        }}>
-          — A NEW TERRAIN ENTERTAINMENT PRODUCTION
-        </div>
         <blockquote style={{
           fontFamily: "'Cormorant Garamond', 'Times New Roman', serif",
           fontSize: isMobile ? "1.15rem" : "clamp(1.3rem, 2.6vw, 2.2rem)",

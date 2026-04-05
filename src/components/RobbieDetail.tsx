@@ -122,7 +122,7 @@ export default function RobbieDetail({ project, config, onBack }: Props) {
           marginBottom: "20px",
           lineHeight: isMobile ? 1.6 : 1,
         }}>
-          NEW TERRAIN ENTERTAINMENT · SHORT FILM · 2023
+          SHORT FILM · 2023
         </div>
         <h1 style={{
           fontFamily: "'Cormorant Garamond', 'Times New Roman', serif",
@@ -364,16 +364,6 @@ export default function RobbieDetail({ project, config, onBack }: Props) {
                 ))}
               </div>
             </div>
-          </div>
-          <div style={{
-            borderTop: "1px solid rgba(0,0,0,0.08)",
-            marginTop: "48px",
-            paddingTop: "20px",
-            fontSize: isMobile ? "0.55rem" : "1.09rem",
-            letterSpacing: isMobile ? "0.15em" : "0.25em",
-            color: "rgba(0,0,0,0.35)",
-          }}>
-            NEW TERRAIN ENTERTAINMENT · 2023
           </div>
         </div>
       </div>
