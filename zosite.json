@@ -1,15 +1,5 @@
 {
   "name": "jadoncalfitzpatrick",
   "local_port": 53455,
-  "entrypoint": "bun run dev",
-  "publish": {
-    "label": "jadoncalfitzpatrick",
-    "type": "http",
-    "entrypoint": "bun run prod",
-    "published_port": 51980,
-    "env": {
-      "NODE_ENV": "production",
-      "ZO_CLIENT_IDENTITY_TOKEN": "none"
-    }
-  }
+  "entrypoint": "bun run dev"
 }

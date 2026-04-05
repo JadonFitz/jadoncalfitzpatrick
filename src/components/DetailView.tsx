@@ -2,6 +2,7 @@ import type { Project } from "../data/projects";
 import type { SiteConfig } from "../data/site-config";
 import { WHATS_NEXT } from "../data/projects";
 import OffRipDetail from "./OffRipDetail";
+import RobbieDetail from "./RobbieDetail";
 
 interface Props {
   project: Project;
@@ -12,6 +13,9 @@ interface Props {
 export default function DetailView({ project, config, onBack }: Props) {
   if (project.id === "off-rip") {
     return <OffRipDetail project={project} config={config} onBack={onBack} />;
+  }
+  if (project.id === "robbie") {
+    return <RobbieDetail project={project} config={config} onBack={onBack} />;
   }
 
   const paragraphs = project.description.split("\n\n").filter(Boolean);
